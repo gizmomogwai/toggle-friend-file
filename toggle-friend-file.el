@@ -66,3 +66,5 @@
       (desc "test with filename")
       (expect "include/Test.h" (toggle-friend-file-calc-friend-file "src/Test.cpp"))
       )))
+      
+(provide 'toggle-friend-file)
