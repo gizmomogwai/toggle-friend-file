@@ -1,8 +1,8 @@
-(defgroup toggle-friend-file nil
-  "Toggle between friend files."
-  :group 'toggle-friend-file)
+(defgroup tff nil
+  "Toggle between Friend Files."
+  :group 'tff)
 
-(defcustom toggle-friend-file-extension-mapping
+(defcustom tff-extension-mapping
   '(("cpp" "h")
     ("h" "cpp")
     ("haml" "yaml")
@@ -12,59 +12,79 @@
 	  (list
 	   (string :tag "from")
 	   (string :tag "to")))
-  :group 'toggle-friend-file)
+  :group 'tff)
 
-(defcustom toggle-friend-file-path-mapping
-  '(("src" "include") ("include" "src"))
+(defcustom tff-path-mapping
+  '(("src" "include") 
+    ("include" "src"))
   "replacements of file paths"
   :type '(repeat
 	  (list
 	   (string :tag "from")
 	   (string :tag "to")))
-  :group 'toggle-friend-file)
+  :group 'tff)
 
-(defun toggle-friend-file-replace-with-first-pattern
+(defun tff-replace-extension
   (patterns input)
-  "takes a list of string used as regexp and replace and returns the result of the first replacement"
-  (if (eq nil (first patterns))
-      input
-    (let* ((p (first patterns))
-	   (replaced (replace-regexp-in-string (car p) (car (cdr p)) input))
+  "replaces the extension from input with a matching pattern from patterns"
+  (let* 
+      ((extension (file-name-extension input))
+       (basename (file-name-sans-extension input))
+       (p (assoc extension patterns)))
+    (if p (concat basename "." (car (cdr p))) nil)))
+
+(defun tff-replace-with-first-matching-regexp
+  (patterns input)
+  "iterates over patterns and return the regexp-replace of the first regexp-match"
+  (if (first patterns) 
+    (let* ((pair (first patterns))
+	   (pattern (car pair))
+	   (repl (car (cdr pair)))
+	   (replaced (replace-regexp-in-string pattern repl input))
 	   (finished (not (string= replaced input))))
-      (if finished replaced (toggle-friend-file-replace-with-first-pattern (rest patterns) input)))))
+      (if finished replaced (tff-replace-with-first-matching-regexp (rest patterns) input))) 
+    input))
 
-(defun toggle-friend-file-calc-friend-file
-  (filename)
-  "calcs the friend file name"
-  (let*
-      ((basename (file-name-sans-extension filename))
-       (extension (file-name-extension filename))
-       (new-extension (car (cdr (assoc extension toggle-friend-file-extension-mapping))))
-       (res (toggle-friend-file-replace-with-first-pattern toggle-friend-file-path-mapping (concat basename "." new-extension))))
-    res))
+(defun tff-calc-file-name
+  (ext-patterns regexp-patterns input)
+  "replaces the file-extension and the regexp-patterns"
+  (tff-replace-with-first-matching-regexp regexp-patterns (or (tff-replace-extension ext-patterns input) input)))
 
-(defun toggle-friend-file ()
- "toggles between friend files (see toggle-friend-file customization group)"
- (interactive)
- (let*
-     ((filename (buffer-file-name))
-      (new-filename (toggle-friend-file-calc-friend-file filename)))
-   (if (not (string= filename new-filename)) (find-file new-filename))
- ))
+(defun tff
+  ()
+  "toggles between friend fiels (see tff customization group)"
+  (interactive)
+  (let* ((file-name (buffer-file-name))
+	 (new-file-name (tff-calc-file-name tff-extension-mapping tff-path-mapping file-name)))
+    (if (not (string= file-name new-file-name)) (find-file new-file-name))))
 
-(cdr (assoc "cpp" toggle-friend-file-extension-mapping))
-(require 'el-expectations)
-(dont-compile
-  (when (fboundp 'expectations)
-    (expectations
-      (desc "replace with one pattern")
-      (expect "a23a" (toggle-friend-file-replace-with-first-pattern '(("1" "a")) "1231"))
-      (desc "replace with second pattern")
-      (expect "1b31" (toggle-friend-file-replace-with-first-pattern '(("a" "a") ("2" "b")) "1231"))
-      (desc "test with customized vars")
-      (expect '("cpp" "h") (first toggle-friend-file-extension-mapping))
-      (desc "test with filename")
-      (expect "include/Test.h" (toggle-friend-file-calc-friend-file "src/Test.cpp"))
-      )))
-      
-(provide 'toggle-friend-file)
+(global-set-key (kbd "C-1") 'tff)
+
+(progn
+  (put 'tff-path-mapping 'safe-local-variable 'listp)
+  (put 'tff-extension-mapping 'safe-local-variable 'listp)
+)
+
+
+(dont-compile (when (fboundp 'expectations) 
+
+(expectations
+  (desc "nil when no matching extension")
+  (expect nil (tff-replace-extension '(("cpp" "h")) "test.rb"))
+  (desc "not nil when a extension matches")
+  (expect "test.yaml" (tff-replace-extension '(("cpp" "h")("rb" "yaml")) "test.rb"))
+
+  (desc "replace with first matching regexp")
+  (expect "/some/path/src/test" (tff-replace-with-first-matching-regexp '(("include" "src")) "/some/path/include/test"))
+  (desc "no replacement when no regexp matches")
+  (expect "/some/path/include/test" (tff-replace-with-first-matching-regexp '(("abc" "def")) "/some/path/include/test"))
+
+  (desc "combine extension and regex replacement")
+  (expect "/some/path/include/test.h" (tff-calc-file-name '(("cpp" "h")) '(("src" "include")) "/some/path/src/test.cpp"))
+  (desc "combine no extension match and regex replacement")
+  (expect "/some/path/include/test.cc" (tff-calc-file-name '(("cpp" "h")) '(("src" "include")) "/some/path/src/test.cc"))
+  (desc "combine extension match and no regex replacement")
+  (expect "/some/path/src/test.h" (tff-calc-file-name '(("cpp" "h")) '(("src2" "include")) "/some/path/src/test.cpp"))
+  )
+
+))
