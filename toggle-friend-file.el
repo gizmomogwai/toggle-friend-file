@@ -5,6 +5,8 @@
 (defcustom tff-extension-mapping
   '(("cpp" "h")
     ("h" "cpp")
+    ("c" "h")
+    ("h" "c")
     ("haml" "yaml")
     ("yaml" "haml"))
   "mapping between file extensions"
@@ -15,7 +17,7 @@
   :group 'tff)
 
 (defcustom tff-path-mapping
-  '(("src" "include") 
+  '(("src" "include")
     ("include" "src"))
   "replacements of file paths"
   :type '(repeat
@@ -27,7 +29,7 @@
 (defun tff-replace-extension
   (patterns input)
   "replaces the extension from input with a matching pattern from patterns"
-  (let* 
+  (let*
       ((extension (file-name-extension input))
        (basename (file-name-sans-extension input))
        (p (assoc extension patterns)))
@@ -36,13 +38,13 @@
 (defun tff-replace-with-first-matching-regexp
   (patterns input)
   "iterates over patterns and return the regexp-replace of the first regexp-match"
-  (if (first patterns) 
+  (if (first patterns)
     (let* ((pair (first patterns))
 	   (pattern (car pair))
 	   (repl (car (cdr pair)))
 	   (replaced (replace-regexp-in-string pattern repl input))
 	   (finished (not (string= replaced input))))
-      (if finished replaced (tff-replace-with-first-matching-regexp (rest patterns) input))) 
+      (if finished replaced (tff-replace-with-first-matching-regexp (rest patterns) input)))
     input))
 
 (defun tff-calc-file-name
@@ -58,15 +60,13 @@
 	 (new-file-name (tff-calc-file-name tff-extension-mapping tff-path-mapping file-name)))
     (if (not (string= file-name new-file-name)) (find-file new-file-name))))
 
-(global-set-key (kbd "C-1") 'tff)
-
 (progn
   (put 'tff-path-mapping 'safe-local-variable 'listp)
   (put 'tff-extension-mapping 'safe-local-variable 'listp)
 )
 
 
-(dont-compile (when (fboundp 'expectations) 
+(dont-compile (when (fboundp 'expectations)
 
 (expectations
   (desc "nil when no matching extension")
