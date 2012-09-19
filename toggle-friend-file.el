@@ -62,6 +62,8 @@
   (put 'tff-extension-mapping 'safe-local-variable 'listp)
 )
 
+(provide 'toggle-friend-file)
+
 (dont-compile
   (when (fboundp 'expectations)
     (expectations
