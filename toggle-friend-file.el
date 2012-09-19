@@ -9,8 +9,8 @@
     ("\\.h$" "c")
     ("\\.haml$" "yaml")
     ("\\.yaml$" "haml")
-    ("\\.rb$" "_spec.rb")
     ("_spec\\.rb$" ".rb")
+    ("\\.rb$" "_spec.rb")
     )
   "mapping between file extensions"
   :type '(repeat
