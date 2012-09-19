@@ -3,16 +3,19 @@
   :group 'tff)
 
 (defcustom tff-extension-mapping
-  '(("cpp" "h")
-    ("h" "cpp")
-    ("c" "h")
-    ("h" "c")
-    ("haml" "yaml")
-    ("yaml" "haml"))
+  '(("\\.cpp$" "h")
+    ("\\.h$" "cpp")
+    ("\\.c$" "h")
+    ("\\.h$" "c")
+    ("\\.haml$" "yaml")
+    ("\\.yaml$" "haml")
+    ("\\.rb$" "_spec.rb")
+    ("_spec\\.rb$" ".rb")
+    )
   "mapping between file extensions"
   :type '(repeat
 	  (list
-	   (string :tag "from")
+	   (regexp :tag "from")
 	   (string :tag "to")))
   :group 'tff)
 
@@ -22,18 +25,9 @@
   "replacements of file paths"
   :type '(repeat
 	  (list
-	   (string :tag "from")
+	   (regexp :tag "from")
 	   (string :tag "to")))
   :group 'tff)
-
-(defun tff-replace-extension
-  (patterns input)
-  "replaces the extension from input with a matching pattern from patterns"
-  (let*
-      ((extension (file-name-extension input))
-       (basename (file-name-sans-extension input))
-       (p (assoc extension patterns)))
-    (if p (concat basename "." (car (cdr p))) nil)))
 
 (defun tff-replace-with-first-matching-regexp
   (patterns input)
@@ -50,7 +44,7 @@
 (defun tff-calc-file-name
   (ext-patterns regexp-patterns input)
   "replaces the file-extension and the regexp-patterns"
-  (tff-replace-with-first-matching-regexp regexp-patterns (or (tff-replace-extension ext-patterns input) input)))
+  (tff-replace-with-first-matching-regexp regexp-patterns (or (tff-replace-with-first-matching-regexp ext-patterns input) input)))
 
 (defun tff
   ()
@@ -65,29 +59,32 @@
   (put 'tff-extension-mapping 'safe-local-variable 'listp)
 )
 
+(dont-compile
+  (when (fboundp 'expectations)
+    (expectations
+      (desc "test regexp")
+      (expect ".rbtesttest" (replace-regexp-in-string "\\.rb$" "test" ".rbtest.rb"))
 
-(dont-compile (when (fboundp 'expectations)
+      (desc "unchanged when no matching extension")
+      (expect "test.rb" (tff-replace-with-first-matching-regexp '(("cpp$" "h")) "test.rb"))
+      (desc "changed when a extension matches")
+      (expect "test.yaml" (tff-replace-with-first-matching-regexp '(("cpp$" "h")("\\.rb$" ".yaml")) "test.rb"))
 
-(expectations
-  (desc "nil when no matching extension")
-  (expect nil (tff-replace-extension '(("cpp" "h")) "test.rb"))
-  (desc "not nil when a extension matches")
-  (expect "test.yaml" (tff-replace-extension '(("cpp" "h")("rb" "yaml")) "test.rb"))
+      (desc "replace with first matching regexp")
+      (expect "/some/path/src/test" (tff-replace-with-first-matching-regexp '(("include" "src")) "/some/path/include/test"))
+      (desc "no replacement when no regexp matches")
+      (expect "/some/path/include/test" (tff-replace-with-first-matching-regexp '(("abc" "def")) "/some/path/include/test"))
 
-  (desc "replace with first matching regexp")
-  (expect "/some/path/src/test" (tff-replace-with-first-matching-regexp '(("include" "src")) "/some/path/include/test"))
-  (desc "no replacement when no regexp matches")
-  (expect "/some/path/include/test" (tff-replace-with-first-matching-regexp '(("abc" "def")) "/some/path/include/test"))
+      (desc "combine extension and regex replacement")
+      (expect "/some/path/include/test.h" (tff-calc-file-name '(("cpp" "h")) '(("src" "include")) "/some/path/src/test.cpp"))
+      (desc "combine no extension match and regex replacement")
+      (expect "/some/path/include/test.cc" (tff-calc-file-name '(("cpp" "h")) '(("src" "include")) "/some/path/src/test.cc"))
+      (desc "combine extension match and no regex replacement")
+      (expect "/some/path/src/test.h" (tff-calc-file-name '(("cpp$" "h")) '(("src2" "include")) "/some/path/src/test.cpp"))
 
-  (desc "combine extension and regex replacement")
-  (expect "/some/path/include/test.h" (tff-calc-file-name '(("cpp" "h")) '(("src" "include")) "/some/path/src/test.cpp"))
-  (desc "combine no extension match and regex replacement")
-  (expect "/some/path/include/test.cc" (tff-calc-file-name '(("cpp" "h")) '(("src" "include")) "/some/path/src/test.cc"))
-  (desc "combine extension match and no regex replacement")
-  (expect "/some/path/src/test.h" (tff-calc-file-name '(("cpp" "h")) '(("src2" "include")) "/some/path/src/test.cpp"))
+      (desc "toggle between rb and spec file")
+      (expect "/some/path/src/test_spec.rb" (tff-calc-file-name '(("\\.rb" "_spec.rb")) '(("src2" "include")) "/some/path/src/test.rb"))
+
+      )
+    )
   )
-
-))
-
-
-(provide 'toggle-friend-file)
