@@ -21,7 +21,10 @@
 
 (defcustom tff-path-mapping
   '(("src" "include")
-    ("include" "src"))
+    ("include" "src")
+    ("lib/" "spec/")
+    ("spec/" "lib/")
+    )
   "replacements of file paths"
   :type '(repeat
 	  (list
@@ -83,7 +86,10 @@
       (expect "/some/path/src/test.h" (tff-calc-file-name '(("cpp$" "h")) '(("src2" "include")) "/some/path/src/test.cpp"))
 
       (desc "toggle between rb and spec file")
-      (expect "/some/path/src/test_spec.rb" (tff-calc-file-name '(("\\.rb" "_spec.rb")) '(("src2" "include")) "/some/path/src/test.rb"))
+      (expect "/some/path/src/test_spec.rb" (tff-calc-file-name '(("\\.rb$" "_spec.rb")("_spec\\.rb$" ".rb")) '(("lib" "spec")) "/some/path/lib/test.rb"))
+
+      (desc "toggle between c and h files")
+      (expect "/some/path/src/test_spec.rb" (tff-calc-file-name '(("\\.c$" ".h")) '(("src" "include")) "/some/path/src/test.c"))
 
       )
     )
