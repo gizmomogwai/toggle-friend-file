@@ -3,12 +3,12 @@
   :group 'tff)
 
 (defcustom tff-extension-mapping
-  '(("\\.cpp$" "h")
-    ("\\.h$" "cpp")
-    ("\\.c$" "h")
-    ("\\.h$" "c")
-    ("\\.haml$" "yaml")
-    ("\\.yaml$" "haml")
+  '(("\\.cpp$" ".h")
+    ("\\.h$" ".cpp")
+    ("\\.c$" ".h")
+    ("\\.h$" ".c")
+    ("\\.haml$" ".yaml")
+    ("\\.yaml$" ".haml")
     ("_spec\\.rb$" ".rb")
     ("\\.rb$" "_spec.rb")
     )
